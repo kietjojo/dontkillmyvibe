@@ -9,8 +9,6 @@ import tkinter as tk
 from tkinter import ttk
 import pystray
 from PIL import Image, ImageDraw
-import ctypes
-import sys
 import logging
 
 # Setup logging to file
