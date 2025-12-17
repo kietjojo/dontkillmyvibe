@@ -1,3 +1,5 @@
 SpeechRecognition
 pynput
 PyAudio
+pystray
+pillow
