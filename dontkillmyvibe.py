@@ -9,6 +9,8 @@ import tkinter as tk
 from tkinter import ttk
 import pystray
 from PIL import Image, ImageDraw
+import ctypes
+import sys
 import logging
 
 # Setup logging to file
@@ -17,8 +19,7 @@ logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler(log_file, encoding='utf-8'),
-        logging.StreamHandler()
+        logging.FileHandler(log_file, encoding='utf-8')
     ]
 )
 logger = logging.getLogger(__name__)
@@ -38,6 +39,21 @@ def log(message):
             log_widget.insert(tk.END, message + '\n')
             log_widget.see(tk.END)  # Auto scroll
             log_widget.config(state=tk.DISABLED)
+
+
+def ensure_console():
+    """Open a separate PowerShell tail window; closing it won't kill the app"""
+    log_path = log_file
+    cmd = [
+        "powershell",
+        "-NoExit",
+        "-Command",
+        f"Get-Content -Path '{log_path}' -Wait -Tail 200"
+    ]
+    try:
+        subprocess.Popen(cmd, creationflags=subprocess.CREATE_NEW_CONSOLE)
+    except Exception:
+        pass
 
 # Load config từ file
 def load_config():
@@ -83,7 +99,7 @@ class VoiceController:
             self.keyboard.release(Key.media_play_pause)
         except Exception as e:
             log(f"❌ Failed to open app: {e}")
-    
+
     def play_pause(self):
         self.keyboard.press(Key.media_play_pause)
         self.keyboard.release(Key.media_play_pause)
@@ -214,7 +230,6 @@ class TrayApp:
         self.window = None
         self.icon = None
         self.is_running = True
-        self.log_frame = None
         
     def create_image(self):
         """Load icon from config or create default"""
@@ -236,10 +251,14 @@ class TrayApp:
     def create_window(self):
         self.window = tk.Tk()
         self.window.title("Don't Kill My Vibe")
-        self.window.geometry("500x700")
-        
-        # Create debug_var after window is initialized
-        self.debug_var = tk.BooleanVar(value=False)
+        self.window.geometry("270x470")
+        # Center window on screen
+        self.window.update_idletasks()
+        w = self.window.winfo_width()
+        h = self.window.winfo_height()
+        x = (self.window.winfo_screenwidth() // 2) - (w // 2)
+        y = (self.window.winfo_screenheight() // 2) - (h // 2)
+        self.window.geometry(f"{w}x{h}+{x}+{y}")
         
         # Ngăn window đóng khi nhấn X, thay vào đó minimize to tray
         self.window.protocol("WM_DELETE_WINDOW", self.hide_window)
@@ -278,39 +297,14 @@ class TrayApp:
         ttk.Label(commands_frame, text="Alt+Right - Next song").grid(row=3, column=0, sticky=tk.W)
         ttk.Label(commands_frame, text="Alt+Left - Previous song").grid(row=4, column=0, sticky=tk.W)
         
-        debug_frame = ttk.LabelFrame(frame, text="Settings", padding="10")
+        debug_frame = ttk.LabelFrame(frame, text="Debug", padding="10")
         debug_frame.grid(row=3, column=0, pady=10, sticky=(tk.W, tk.E))
         debug_frame.columnconfigure(0, weight=1)
-        
-        # Debug mode toggle
-        debug_inner_frame = ttk.Frame(debug_frame)
-        debug_inner_frame.grid(row=0, column=0, sticky=(tk.W, tk.E))
-        
-        ttk.Checkbutton(
-            debug_inner_frame, 
-            text="Debug Mode", 
-            variable=self.debug_var,
-            command=self.toggle_debug
-        ).pack(side=tk.LEFT, padx=5)
-        
-        self.debug_status_label = ttk.Label(debug_inner_frame, text="[OFF]", foreground="red", font=('Arial', 10, 'bold'))
-        self.debug_status_label.pack(side=tk.LEFT, padx=10)
-        
-        # Log display
-        self.log_frame = ttk.LabelFrame(frame, text="Debug Log", padding="10")
-        self.log_frame.grid(row=4, column=0, pady=10, sticky=(tk.W, tk.E, tk.N, tk.S))
-        self.log_frame.grid_remove()  # Ẩn mặc định
-        
-        scrollbar = ttk.Scrollbar(self.log_frame)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
-        global log_widget
-        log_widget = tk.Text(self.log_frame, height=8, width=50, state=tk.DISABLED, yscrollcommand=scrollbar.set)
-        log_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar.config(command=log_widget.yview)
-        
+
+        ttk.Button(debug_frame, text="Open Debug Console", command=self.toggle_debug).grid(row=0, column=0, sticky=tk.W, padx=5)
+
         button_frame = ttk.Frame(frame)
-        button_frame.grid(row=5, column=0, pady=10)
+        button_frame.grid(row=4, column=0, pady=10)
         
         ttk.Button(button_frame, text="Hide to Tray", command=self.hide_window).pack(side=tk.LEFT, padx=5)
         ttk.Button(button_frame, text="Quit", command=self.quit_app).pack(side=tk.LEFT, padx=5)
@@ -327,14 +321,9 @@ class TrayApp:
     
     def toggle_debug(self):
         global DEBUG
-        DEBUG = self.debug_var.get()
-        # Update label
-        if DEBUG:
-            self.debug_status_label.config(text="[ON]", foreground="green")
-            self.log_frame.grid()  # Hiển thị log frame
-        else:
-            self.debug_status_label.config(text="[OFF]", foreground="red")
-            self.log_frame.grid_remove()  # Ẩn log frame
+        # Always enable debug and open a new console tail window
+        DEBUG = True
+        ensure_console()
     
     def quit_app(self, icon=None, item=None):
         self.is_running = False
