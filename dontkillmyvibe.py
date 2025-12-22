@@ -79,8 +79,8 @@ class VoiceController:
         
         self.commands = {
             'save me': self.open_and_play,
-            'play': self.play_pause,
-            'stop': self.stop_media,
+            'play music': self.play_pause,
+            'stop music': self.stop_media,
             'next song': self.next_media,
             'previous song': self.previous_media,
             'volume up': self.volume_up,
