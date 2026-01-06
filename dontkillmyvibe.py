@@ -74,8 +74,8 @@ class VoiceController:
         self.keyboard = Controller()
         self.running = False
         self.pressed_keys = set()
-        self.last_alt_time = 0.0
-        self.alt_tap_count = 0
+        self.last_capslock_time = 0.0
+        self.capslock_tap_count = 0
         
         self.commands = {
             'save me': self.open_and_play,
@@ -178,19 +178,19 @@ class VoiceController:
         # Track pressed keys for modifier detection
         self.pressed_keys.add(key)
 
-        # Alt double-tap -> Play/Pause
-        if key in (Key.alt, Key.alt_l, Key.alt_r):
+        # Caps Lock double-tap -> Play/Pause
+        if key == Key.caps_lock:
             now = time.time()
-            if now - self.last_alt_time <= 0.4:
-                self.alt_tap_count += 1
+            if now - self.last_capslock_time <= 0.4:
+                self.capslock_tap_count += 1
             else:
-                self.alt_tap_count = 1
-            self.last_alt_time = now
+                self.capslock_tap_count = 1
+            self.last_capslock_time = now
 
-            if self.alt_tap_count >= 2:
+            if self.capslock_tap_count >= 2:
                 Thread(target=self.play_pause, daemon=True).start()
-                log("Keyboard: Alt x2 -> Play/Pause")
-                self.alt_tap_count = 0
+                log("Keyboard: CapsLock x2 -> Play/Pause")
+                self.capslock_tap_count = 0
             return
 
         # Alt-modified arrow hotkeys
@@ -289,7 +289,7 @@ class TrayApp:
         commands_frame.grid(row=2, column=0, pady=10, sticky=(tk.W, tk.E))
         commands_frame.columnconfigure(0, weight=1)
         
-        ttk.Label(commands_frame, text="Alt x2 - Play/Pause").grid(row=0, column=0, sticky=tk.W)
+        ttk.Label(commands_frame, text="CapsLock x2 - Play/Pause").grid(row=0, column=0, sticky=tk.W)
         ttk.Label(commands_frame, text="Alt+Up - Volume up").grid(row=1, column=0, sticky=tk.W)
         ttk.Label(commands_frame, text="Alt+Down - Volume down").grid(row=2, column=0, sticky=tk.W)
         ttk.Label(commands_frame, text="Alt+Right - Next song").grid(row=3, column=0, sticky=tk.W)
