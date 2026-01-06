@@ -1,4 +1,4 @@
-# DontKillMyVibe
+# dontkilmyvibe
 
 Control your media player (MusicBee, Spotify, etc.) with voice commands and smart hotkeys.
 
